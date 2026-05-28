@@ -1,0 +1,9 @@
+{
+  "name": "alertService",
+  "version": "1.0.0",
+  "description": "预警服务 - 低库存检测、滞销检测",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

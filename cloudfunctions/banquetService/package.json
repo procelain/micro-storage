@@ -1,0 +1,9 @@
+{
+  "name": "banquetService",
+  "version": "1.0.0",
+  "description": "宴会服务 - 宴会CRUD、状态流转",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

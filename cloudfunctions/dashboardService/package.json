@@ -1,0 +1,9 @@
+{
+  "name": "dashboardService",
+  "version": "1.0.0",
+  "description": "看板服务 - 数据聚合、库存趋势、预警统计",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}
