@@ -1,201 +1,229 @@
 <template>
   <view class="inventory-page">
-    <!-- 自定义导航栏 -->
-    <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
-      <view class="nav-content">
-        <text class="nav-title">库存管理</text>
-        <view class="nav-action" @tap="goToAddMaterial">
-          <text class="action-text">+ 新增</text>
-        </view>
-      </view>
-    </view>
-
-    <!-- 搜索栏 -->
-    <SearchBar v-model="keyword" placeholder="搜索物资名称..." @search="onSearch" />
-
-    <!-- 分类标签 -->
-    <scroll-view scroll-x class="category-scroll">
-      <view class="category-tabs">
-        <view
-          v-for="cat in categories"
-          :key="cat.value"
-          class="category-tab"
-          :class="{ active: currentCategory === cat.value }"
-          @tap="selectCategory(cat.value)"
-        >
-          <view v-if="cat.value" class="cat-dot" :style="{ background: cat.color }"></view>
-          <text class="tab-text">{{ cat.label }}</text>
-        </view>
-      </view>
-    </scroll-view>
-
-    <!-- 物资列表 -->
     <scroll-view
       scroll-y
-      class="material-list"
+      class="content-scroll"
       :style="{ height: scrollHeight + 'px' }"
-      @scrolltolower="loadMore"
     >
-      <MaterialCard
-        v-for="item in materialStore.list"
-        :key="item._id"
-        :material="item"
-        @tap="goToDetail(item._id)"
-      />
+      <view
+        class="page-header"
+        :style="{ paddingTop: statusBarHeight + 16 + 'px' }"
+      >
+        <text class="page-title">气球库存</text>
+      </view>
+
+      <view class="search-wrap">
+        <SearchBar
+          v-model="keyword"
+          placeholder="搜索颜色 / 尺寸 / 场景，例如：粉色 10寸"
+          @search="onSearch"
+        />
+      </view>
+
+      <scroll-view scroll-x class="category-scroll">
+        <view class="category-tabs">
+          <view
+            v-for="filter in filters"
+            :key="filter.label"
+            class="category-tab"
+            :class="{ active: currentFilter === filter.label }"
+            @tap="selectFilter(filter.label)"
+          >
+            <text class="tab-text">{{ filter.label }}</text>
+          </view>
+        </view>
+      </scroll-view>
+
+      <view class="material-list">
+        <MaterialCard
+          v-for="item in displayList"
+          :key="item._id"
+          :material="item"
+          @tap="goToDetail(item._id)"
+        />
+      </view>
+
       <view v-if="materialStore.loading" class="loading">
         <text class="loading-text">加载中...</text>
       </view>
-      <view v-if="!materialStore.loading && materialStore.list.length === 0" class="no-data">
+
+      <view
+        v-if="!materialStore.loading && displayList.length === 0"
+        class="no-data"
+      >
         <EmptyState
-          icon="📦"
-          title="暂无物资"
-          description="点击右下角按钮添加第一项物资"
-          actionText="添加物资"
-          @action="goToAddMaterial"
+          icon="O"
+          :title="keyword ? '没有找到匹配气球' : '还没有气球记录'"
+          :description="
+            keyword
+              ? '试试更换颜色、尺寸或场景关键词'
+              : '先新增气球，后续补货和库存提醒都会在这里显示'
+          "
+          actionText="补货 / 新增"
+          @action="goToPurchase"
         />
       </view>
     </scroll-view>
 
-    <!-- 浮动按钮 - 进货录入 -->
-    <view class="fab-button" @tap="goToPurchase">
-      <text class="fab-icon">📦</text>
-      <text class="fab-text">进货</text>
+    <view class="fab-button" @tap="goToAddMaterial">
+      <text class="fab-icon">+</text>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
-import { useMaterialStore } from '@/stores/material'
-import SearchBar from '@/components/SearchBar.vue'
-import MaterialCard from '@/components/MaterialCard.vue'
-import EmptyState from '@/components/EmptyState.vue'
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import { onShow } from "@dcloudio/uni-app";
+import { useMaterialStore } from "@/stores/material";
+import SearchBar from "@/components/SearchBar.vue";
+import MaterialCard from "@/components/MaterialCard.vue";
+import EmptyState from "@/components/EmptyState.vue";
+import type { Material } from "@/api/material";
 
-const materialStore = useMaterialStore()
+const materialStore = useMaterialStore();
 
-const statusBarHeight = ref(0)
-const scrollHeight = ref(0)
+const statusBarHeight = ref(0);
+const scrollHeight = ref(0);
 // #ifdef MP-WEIXIN
-const systemInfo = uni.getSystemInfoSync()
-statusBarHeight.value = systemInfo.statusBarHeight || 0
+const systemInfo = uni.getSystemInfoSync();
+statusBarHeight.value = systemInfo.statusBarHeight || 0;
 // #endif
 
-const keyword = ref('')
-const currentCategory = ref('')
+const keyword = ref("");
+const currentFilter = ref("全部");
+const activeAlertType = ref<"" | "lowStock" | "slow">("");
 
-const categories = [
-  { label: '全部', value: '', color: '' },
-  { label: '花艺', value: '花艺', color: '#FF6B9D' },
-  { label: '灯光', value: '灯光', color: '#FFD93D' },
-  { label: '布艺', value: '布艺', color: '#6BCB77' },
-  { label: '餐具', value: '餐具', color: '#4D96FF' },
-  { label: '道具', value: '道具', color: '#9B59B6' },
-  { label: '其他', value: '其他', color: '#A0A0A0' }
-]
+const filters = [
+  { label: "全部", type: "all", value: "" },
+  { label: "5寸", type: "spec", value: "5寸" },
+  { label: "10寸", type: "spec", value: "10寸" },
+  { label: "18寸", type: "spec", value: "18寸" },
+  { label: "乳胶", type: "category", value: "乳胶" },
+  { label: "铝膜", type: "category", value: "铝膜" },
+  { label: "其他", type: "category", value: "其他" },
+];
 
-function selectCategory(cat: string) {
-  currentCategory.value = cat
-  loadList()
+const displayList = computed(() => {
+  const normalizedKeyword = keyword.value.trim().toLowerCase();
+  const activeFilter = filters.find(
+    (item) => item.label === currentFilter.value,
+  );
+
+  return materialStore.list.filter((item: Material) => {
+    const matchesKeyword =
+      !normalizedKeyword ||
+      [item.name, item.spec, item.category]
+        .filter(Boolean)
+        .some((text) => String(text).toLowerCase().includes(normalizedKeyword));
+
+    if (!matchesKeyword) {
+      return false;
+    }
+
+    if (!activeFilter || activeFilter.type === "all") {
+      return true;
+    }
+
+    if (activeFilter.type === "category") {
+      return item.category === activeFilter.value;
+    }
+
+    return (
+      item.spec?.includes(activeFilter.value) ||
+      item.name?.includes(activeFilter.value)
+    );
+  });
+});
+
+function selectFilter(label: string) {
+  currentFilter.value = label;
+  activeAlertType.value = "";
+  loadList();
 }
 
 function onSearch() {
-  loadList()
+  loadList();
 }
 
 function loadList() {
   materialStore.fetchList({
-    keyword: keyword.value,
-    category: currentCategory.value,
-    page: 1
-  })
-}
-
-function loadMore() {
-  if (materialStore.list.length < materialStore.total) {
-    materialStore.fetchList({
-      keyword: keyword.value,
-      category: currentCategory.value,
-      page: Math.floor(materialStore.list.length / 50) + 1
-    })
-  }
+    page: 1,
+    pageSize: 200,
+    alertType: activeAlertType.value || undefined,
+  });
 }
 
 function goToDetail(id: string) {
-  uni.navigateTo({ url: `/pages/inventory/detail?id=${id}` })
+  uni.navigateTo({ url: `/pages/inventory/detail?id=${id}` });
 }
 
 function goToAddMaterial() {
-  uni.navigateTo({ url: '/pages/inventory/purchase?mode=add' })
+  uni.navigateTo({ url: "/pages/inventory/purchase?mode=add" });
 }
 
 function goToPurchase() {
-  uni.navigateTo({ url: '/pages/inventory/purchase' })
+  uni.navigateTo({ url: "/pages/inventory/purchase" });
 }
 
 onMounted(() => {
-  const sysInfo = uni.getSystemInfoSync()
-  scrollHeight.value = sysInfo.windowHeight - 260
-  loadList()
-})
+  const sysInfo = uni.getSystemInfoSync();
+  scrollHeight.value = sysInfo.windowHeight;
+  loadList();
+});
 
 onShow(() => {
-  loadList()
-})
+  loadList();
+});
 
-// 监听来自看板的筛选事件
-uni.$on('inventory:filter', (data: any) => {
+function handleInventoryFilter(data: { alertType?: "lowStock" | "slow" }) {
   if (data.alertType) {
-    currentCategory.value = ''
-    materialStore.fetchList({ alertType: data.alertType })
+    currentFilter.value = "全部";
+    activeAlertType.value = data.alertType;
+    materialStore.fetchList({
+      page: 1,
+      pageSize: 200,
+      alertType: data.alertType,
+    });
   }
-})
+}
+
+uni.$on("inventory:filter", handleInventoryFilter);
+
+onUnmounted(() => {
+  uni.$off("inventory:filter", handleInventoryFilter);
+});
 </script>
 
 <style lang="scss" scoped>
 .inventory-page {
   min-height: 100vh;
-  background: $bg-primary;
+  background: #f3f4f6;
 }
 
-.nav-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  background: rgba(26, 26, 46, 0.95);
-  backdrop-filter: blur(20px);
+.content-scroll {
+  box-sizing: border-box;
+  padding-bottom: 32rpx;
 }
 
-.nav-content {
+.page-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 16rpx 32rpx;
+  padding: 0 32rpx 24rpx;
 }
 
-.nav-title {
-  font-size: 36rpx;
+.page-title {
+  font-size: 38rpx;
   font-weight: 700;
-  color: $text-primary;
+  color: #111827;
 }
 
-.nav-action {
-  padding: 12rpx 24rpx;
-  background: $primary-gradient;
-  border-radius: $radius-round;
-}
-
-.action-text {
-  font-size: $font-sm;
-  color: $bg-primary;
-  font-weight: 600;
+.search-wrap {
+  padding: 0 24rpx 8rpx;
 }
 
 .category-scroll {
   white-space: nowrap;
-  padding: 0 24rpx 16rpx;
+  padding: 0 24rpx 20rpx;
 }
 
 .category-tabs {
@@ -206,32 +234,30 @@ uni.$on('inventory:filter', (data: any) => {
 .category-tab {
   display: inline-flex;
   align-items: center;
-  gap: 8rpx;
-  padding: 10rpx 24rpx;
+  justify-content: center;
+  min-width: 76rpx;
+  height: 54rpx;
+  padding: 0 22rpx;
   border-radius: $radius-round;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  background: #f8fafc;
+  border: 1rpx solid #cbd5e1;
   transition: all $transition-fast;
+  box-sizing: border-box;
 }
 
 .category-tab.active {
-  background: rgba(201, 169, 110, 0.15);
-  border-color: rgba(201, 169, 110, 0.4);
-}
-
-.cat-dot {
-  width: 12rpx;
-  height: 12rpx;
-  border-radius: 6rpx;
+  background: #ffffff;
+  border-color: #111827;
 }
 
 .tab-text {
   font-size: $font-sm;
-  color: $text-tertiary;
+  color: #64748b;
 }
 
 .category-tab.active .tab-text {
-  color: $primary;
+  color: #111827;
+  font-weight: 600;
 }
 
 .material-list {
@@ -256,28 +282,24 @@ uni.$on('inventory:filter', (data: any) => {
   position: fixed;
   right: 32rpx;
   bottom: 120rpx;
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50rpx;
+  background: #111827;
   display: flex;
   align-items: center;
-  gap: 8rpx;
-  padding: 20rpx 32rpx;
-  background: $primary-gradient;
-  border-radius: $radius-round;
-  box-shadow: $shadow-primary;
+  justify-content: center;
+  box-shadow: 0 16rpx 40rpx rgba(15, 23, 42, 0.2);
   z-index: 50;
-  transition: transform $transition-fast;
 
   &:active {
-    transform: scale(0.95);
+    transform: scale(0.9);
   }
 }
 
 .fab-icon {
-  font-size: 32rpx;
-}
-
-.fab-text {
-  font-size: $font-base;
-  color: $bg-primary;
-  font-weight: 600;
+  font-size: 40rpx;
+  color: #ffffff;
+  font-weight: 700;
 }
 </style>

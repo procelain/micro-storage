@@ -1,7 +1,6 @@
 <template>
   <view class="detail-page">
     <scroll-view scroll-y class="scroll-content">
-      <!-- 宴会信息头部 -->
       <view class="detail-header">
         <view class="header-top">
           <view class="status-badge" :style="{ background: statusBg }">
@@ -9,35 +8,25 @@
           </view>
           <text class="event-date">{{ formatDate(banquet?.eventDate) }}</text>
         </view>
-        <text class="client-name">{{ banquet?.clientName }}</text>
         <text v-if="banquet?.venue" class="venue-text">📍 {{ banquet?.venue }}</text>
+        <text v-if="banquet?.remark" class="remark-text">{{ banquet?.remark }}</text>
       </view>
 
-      <!-- 财务概览 -->
-      <view class="finance-overview">
-        <view class="finance-card cost-card">
-          <text class="finance-label">总成本</text>
-          <text class="finance-value">{{ formatMoney(banquet?.totalCost || 0) }}</text>
+      <view class="overview-panel">
+        <view class="overview-card">
+          <text class="overview-label">使用记录</text>
+          <text class="overview-value">{{ banquet?.lossRecords?.length || 0 }} 条</text>
         </view>
-        <view class="finance-card revenue-card" v-if="banquet?.actualRevenue > 0">
-          <text class="finance-label">收入</text>
-          <text class="finance-value revenue-value">{{ formatMoney(banquet?.actualRevenue) }}</text>
-        </view>
-        <view class="finance-card profit-card" v-if="banquet?.actualRevenue > 0">
-          <text class="finance-label">利润</text>
-          <text class="finance-value" :style="{ color: profitColor }">{{ formatMoney(profit) }}</text>
+        <view class="overview-card">
+          <text class="overview-label">使用数量</text>
+          <text class="overview-value">{{ totalUsageQty }}</text>
         </view>
       </view>
 
-      <!-- 操作按钮 -->
       <view class="action-row">
         <view class="action-btn primary-btn" @tap="goToLossRecord">
           <text class="btn-icon">📝</text>
-          <text class="btn-label">录入损耗</text>
-        </view>
-        <view v-if="banquet?.status !== '已结算'" class="action-btn" @tap="showSettleModal = true">
-          <text class="btn-icon">💰</text>
-          <text class="btn-label">结算</text>
+          <text class="btn-label">使用记录</text>
         </view>
         <view class="action-btn" @tap="changeStatus">
           <text class="btn-icon">🔄</text>
@@ -45,25 +34,27 @@
         </view>
       </view>
 
-      <!-- 损耗记录列表 -->
+      <view class="more-entry">
+        <text class="more-text" @tap="showMoreHint" @longpress="showDetailPanel = true">更多</text>
+      </view>
+
       <view class="loss-section">
         <view class="section-header">
-          <text class="section-title">损耗记录</text>
+          <text class="section-title">使用记录</text>
           <text class="section-count">{{ banquet?.lossRecords?.length || 0 }} 项</text>
         </view>
         <view v-for="loss in banquet?.lossRecords" :key="loss._id" class="loss-item">
           <view class="loss-main">
             <text class="loss-material">{{ loss.materialName }}</text>
             <view class="loss-quantities">
-              <text v-if="loss.consumedQty > 0" class="consumed-tag">消耗 ×{{ loss.consumedQty }}</text>
+              <text v-if="loss.consumedQty > 0" class="consumed-tag">使用 ×{{ loss.consumedQty }}</text>
               <text v-if="loss.damagedQty > 0" class="damaged-tag">损坏 ×{{ loss.damagedQty }}</text>
             </view>
           </view>
           <view class="loss-footer">
-            <text class="loss-cost">{{ formatMoney(loss.costAmount) }}</text>
+            <text class="loss-summary">共 {{ loss.consumedQty + loss.damagedQty }} 个</text>
             <text class="loss-date">{{ formatDate(loss.recordDate) }}</text>
           </view>
-          <!-- 损坏图片 -->
           <view v-if="loss.damagedImages && loss.damagedImages.length > 0" class="loss-images">
             <image
               v-for="(img, idx) in loss.damagedImages"
@@ -79,26 +70,26 @@
           </view>
         </view>
         <view v-if="!banquet?.lossRecords?.length" class="no-loss">
-          <text class="no-loss-text">暂无损耗记录</text>
+          <text class="no-loss-text">还没有使用记录</text>
         </view>
       </view>
     </scroll-view>
 
-    <!-- 结算弹窗 -->
-    <view v-if="showSettleModal" class="modal-mask" @tap="showSettleModal = false">
-      <view class="modal-panel" @tap.stop>
-        <text class="modal-title">录入收入</text>
-        <view class="modal-body">
-          <text class="modal-label">实际收入金额</text>
-          <input class="modal-input" type="digit" v-model="revenueAmount" placeholder="请输入收入金额" />
+    <view v-if="showDetailPanel" class="modal-mask" @tap="showDetailPanel = false">
+      <view class="modal-panel detail-panel" @tap.stop>
+        <view class="detail-header-row">
+          <text class="modal-title">项目明细</text>
+          <text class="picker-close" @tap="showDetailPanel = false">✕</text>
         </view>
-        <view class="modal-actions">
-          <view class="modal-btn cancel-btn" @tap="showSettleModal = false">
-            <text class="modal-btn-text">取消</text>
+        <view class="summary-section">
+          <text class="summary-title">气球使用汇总</text>
+          <view v-for="item in usageSummary" :key="item.materialName" class="summary-item">
+            <text class="summary-name">{{ item.materialName }}</text>
+            <text class="summary-qty">
+              使用 {{ item.consumedQty }} / 损坏 {{ item.damagedQty }}
+            </text>
           </view>
-          <view class="modal-btn confirm-btn" @tap="submitSettle">
-            <text class="modal-btn-text confirm-text">确认结算</text>
-          </view>
+          <text v-if="usageSummary.length === 0" class="summary-empty">暂无可展示的使用记录</text>
         </view>
       </view>
     </view>
@@ -108,22 +99,40 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useBanquetStore } from '@/stores/banquet'
-import { formatMoney, formatDate, getStatusColor, getProfitColor } from '@/utils/format'
+import { formatMoney, formatDate } from '@/utils/format'
+import { getStatusColor } from '@/utils/format'
 import type { Banquet } from '@/api/banquet'
 
 const banquetStore = useBanquetStore()
 const banquet = ref<Banquet | null>(null)
 const banquetId = ref('')
-const showSettleModal = ref(false)
-const revenueAmount = ref('')
+const showDetailPanel = ref(false)
 
 const statusColor = computed(() => getStatusColor(banquet.value?.status || ''))
 const statusBg = computed(() => {
   const c = statusColor.value
   return c + '22'
 })
-const profit = computed(() => (banquet.value?.actualRevenue || 0) - (banquet.value?.totalCost || 0))
-const profitColor = computed(() => getProfitColor(profit.value))
+const totalUsageQty = computed(() => (banquet.value?.lossRecords || []).reduce((sum, item) => {
+  return sum + (item.consumedQty || 0) + (item.damagedQty || 0)
+}, 0))
+const usageSummary = computed(() => {
+  const grouped = new Map<string, { materialName: string; consumedQty: number; damagedQty: number }>()
+
+  for (const record of banquet.value?.lossRecords || []) {
+    const current = grouped.get(record.materialName) || {
+      materialName: record.materialName,
+      consumedQty: 0,
+      damagedQty: 0
+    }
+
+    current.consumedQty += record.consumedQty || 0
+    current.damagedQty += record.damagedQty || 0
+    grouped.set(record.materialName, current)
+  }
+
+  return Array.from(grouped.values())
+})
 
 onMounted(async () => {
   const pages = getCurrentPages()
@@ -159,21 +168,8 @@ function changeStatus() {
   }
 }
 
-async function submitSettle() {
-  const amount = parseFloat(revenueAmount.value)
-  if (!amount || amount <= 0) {
-    uni.showToast({ title: '请输入有效金额', icon: 'none' })
-    return
-  }
-
-  try {
-    await banquetStore.setRevenue(banquetId.value, amount)
-    banquet.value = await banquetStore.fetchDetail(banquetId.value)
-    showSettleModal.value = false
-    uni.showToast({ title: '结算成功', icon: 'success' })
-  } catch (e) {
-    uni.showToast({ title: '结算失败', icon: 'none' })
-  }
+function showMoreHint() {
+  uni.showToast({ title: '长按可查看项目明细', icon: 'none' })
 }
 
 function previewImage(current: string, urls: string[]) {
@@ -185,14 +181,23 @@ function previewImage(current: string, urls: string[]) {
 .detail-page {
   min-height: 100vh;
   background: $bg-primary;
+  overflow-x: hidden;
 }
 
 .scroll-content {
   padding: 24rpx;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .detail-header {
   margin-bottom: 24rpx;
+  padding: 24rpx;
+  background: $bg-card;
+  border: $glass-border;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  box-sizing: border-box;
 }
 
 .header-top {
@@ -217,13 +222,6 @@ function previewImage(current: string, urls: string[]) {
   color: $primary;
 }
 
-.client-name {
-  font-size: $font-2xl;
-  font-weight: 700;
-  color: $text-primary;
-  display: block;
-}
-
 .venue-text {
   font-size: $font-base;
   color: $text-tertiary;
@@ -231,47 +229,55 @@ function previewImage(current: string, urls: string[]) {
   display: block;
 }
 
-.finance-overview {
+.remark-text {
+  font-size: $font-sm;
+  color: $text-secondary;
+  margin-top: 12rpx;
+  display: block;
+}
+
+.overview-panel {
   display: flex;
   gap: 12rpx;
   margin-bottom: 24rpx;
 }
 
-.finance-card {
+.overview-card {
   flex: 1;
+  min-width: 0;
   background: $glass-bg;
-  backdrop-filter: $glass-blur;
   border: $glass-border;
   border-radius: $radius-lg;
   padding: 20rpx;
+  box-shadow: $shadow-card;
 }
 
-.finance-label {
+.overview-label {
   font-size: $font-xs;
   color: $text-tertiary;
   display: block;
   margin-bottom: 8rpx;
 }
 
-.finance-value {
+.overview-value {
   font-size: $font-lg;
   font-weight: 700;
   color: $text-primary;
   display: block;
-}
-
-.revenue-value {
-  color: $success;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .action-row {
   display: flex;
   gap: 12rpx;
-  margin-bottom: 32rpx;
+  margin-bottom: 20rpx;
 }
 
 .action-btn {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -280,6 +286,7 @@ function previewImage(current: string, urls: string[]) {
   background: $glass-bg;
   border: $glass-border;
   border-radius: $radius-lg;
+  box-shadow: $shadow-card;
 
   &:active {
     opacity: 0.8;
@@ -287,8 +294,8 @@ function previewImage(current: string, urls: string[]) {
 }
 
 .primary-btn {
-  background: rgba(201, 169, 110, 0.12);
-  border-color: rgba(201, 169, 110, 0.3);
+  background: $bg-tertiary;
+  border-color: #CBD5E1;
 }
 
 .btn-icon {
@@ -304,12 +311,25 @@ function previewImage(current: string, urls: string[]) {
   color: $primary;
 }
 
+.more-entry {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16rpx;
+}
+
+.more-text {
+  font-size: $font-sm;
+  color: $text-tertiary;
+  padding: 8rpx 4rpx;
+}
+
 .loss-section {
   background: $glass-bg;
-  backdrop-filter: $glass-blur;
   border: $glass-border;
   border-radius: $radius-lg;
   padding: 24rpx;
+  box-shadow: $shadow-card;
+  box-sizing: border-box;
 }
 
 .section-header {
@@ -332,7 +352,7 @@ function previewImage(current: string, urls: string[]) {
 
 .loss-item {
   padding: 16rpx 0;
-  border-bottom: 1rpx solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1rpx solid #E2E8F0;
 
   &:last-child {
     border-bottom: none;
@@ -364,8 +384,8 @@ function previewImage(current: string, urls: string[]) {
 }
 
 .consumed-tag {
-  background: rgba(52, 152, 219, 0.15);
-  color: #3498DB;
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563EB;
 }
 
 .damaged-tag {
@@ -379,10 +399,10 @@ function previewImage(current: string, urls: string[]) {
   align-items: center;
 }
 
-.loss-cost {
+.loss-summary {
   font-size: $font-base;
-  color: $primary;
-  font-weight: 600;
+  color: $text-secondary;
+  font-weight: 500;
 }
 
 .loss-date {
@@ -405,13 +425,8 @@ function previewImage(current: string, urls: string[]) {
 .loss-remark {
   margin-top: 8rpx;
   padding: 8rpx 12rpx;
-  background: rgba(255, 255, 255, 0.03);
+  background: $bg-tertiary;
   border-radius: $radius-sm;
-}
-
-.remark-text {
-  font-size: $font-xs;
-  color: $text-tertiary;
 }
 
 .no-loss {
@@ -424,7 +439,6 @@ function previewImage(current: string, urls: string[]) {
   font-size: $font-sm;
 }
 
-// 结算弹窗
 .modal-mask {
   position: fixed;
   top: 0;
@@ -440,10 +454,13 @@ function previewImage(current: string, urls: string[]) {
 
 .modal-panel {
   width: 600rpx;
+  max-width: 90vw;
   background: $bg-secondary;
   border-radius: $radius-xl;
   padding: 32rpx;
   border: $glass-border;
+  box-shadow: $shadow-float;
+  box-sizing: border-box;
 }
 
 .modal-title {
@@ -455,56 +472,55 @@ function previewImage(current: string, urls: string[]) {
   margin-bottom: 24rpx;
 }
 
-.modal-body {
-  margin-bottom: 32rpx;
+.detail-panel {
+  width: 640rpx;
+  max-width: 92vw;
 }
 
-.modal-label {
+.detail-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.picker-close {
+  font-size: 32rpx;
+  color: $text-tertiary;
+}
+
+.summary-section {
+  border-top: 1rpx solid #E2E8F0;
+  padding-top: 24rpx;
+}
+
+.summary-title {
+  display: block;
+  margin-bottom: 16rpx;
+  font-size: $font-md;
+  color: $text-primary;
+  font-weight: 600;
+}
+
+.summary-item {
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #E2E8F0;
+}
+
+.summary-item:last-child {
+  border-bottom: none;
+}
+
+.summary-name {
+  display: block;
+  margin-bottom: 6rpx;
+  font-size: $font-base;
+  color: $text-primary;
+}
+
+.summary-qty,
+.summary-empty {
   font-size: $font-sm;
   color: $text-tertiary;
-  display: block;
-  margin-bottom: 12rpx;
-}
-
-.modal-input {
-  width: 100%;
-  padding: 20rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1rpx solid rgba(201, 169, 110, 0.2);
-  border-radius: $radius-md;
-  color: $text-primary;
-  font-size: $font-lg;
-  font-weight: 600;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 16rpx;
-}
-
-.modal-btn {
-  flex: 1;
-  padding: 20rpx;
-  border-radius: $radius-lg;
-  text-align: center;
-}
-
-.cancel-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
-}
-
-.confirm-btn {
-  background: $primary-gradient;
-}
-
-.modal-btn-text {
-  font-size: $font-base;
-  color: $text-tertiary;
-}
-
-.confirm-text {
-  color: $bg-primary;
-  font-weight: 600;
+  word-break: break-all;
 }
 </style>

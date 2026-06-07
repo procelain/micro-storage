@@ -3,14 +3,14 @@
     {
       "path": "pages/dashboard/index",
       "style": {
-        "navigationBarTitleText": "数据看板",
+        "navigationBarTitleText": "看板",
         "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/inventory/index",
       "style": {
-        "navigationBarTitleText": "库存管理",
+        "navigationBarTitleText": "气球库存",
         "navigationStyle": "custom"
       }
     },
@@ -22,73 +22,48 @@
       }
     },
     {
-      "path": "pages/finance/index",
-      "style": {
-        "navigationBarTitleText": "财务中心",
-        "navigationStyle": "custom"
-      }
-    },
-    {
       "path": "pages/inventory/detail",
       "style": {
-        "navigationBarTitleText": "物资详情"
+        "navigationBarTitleText": "气球详情"
       }
     },
     {
       "path": "pages/inventory/purchase",
       "style": {
-        "navigationBarTitleText": "进货录入"
+        "navigationBarTitleText": "补货 / 新增气球"
       }
     },
     {
       "path": "pages/banquet/create",
       "style": {
-        "navigationBarTitleText": "创建宴会"
+        "navigationBarTitleText": "新建宴会"
       }
     },
     {
       "path": "pages/banquet/detail",
       "style": {
-        "navigationBarTitleText": "宴会详情"
+        "navigationBarTitleText": "宴会记录"
       }
     },
     {
       "path": "pages/banquet/loss-record",
       "style": {
-        "navigationBarTitleText": "损耗录入"
-      }
-    },
-    {
-      "path": "pages/finance/report",
-      "style": {
-        "navigationBarTitleText": "利润报表"
-      }
-    },
-    {
-      "path": "pages/supplier/index",
-      "style": {
-        "navigationBarTitleText": "供应商管理"
-      }
-    },
-    {
-      "path": "pages/supplier/edit",
-      "style": {
-        "navigationBarTitleText": "编辑供应商"
+        "navigationBarTitleText": "使用记录"
       }
     }
   ],
   "globalStyle": {
-    "navigationBarTextStyle": "white",
-    "navigationBarTitleText": "宴会库存",
-    "navigationBarBackgroundColor": "#1A1A2E",
-    "backgroundColor": "#1A1A2E",
-    "backgroundTextStyle": "light"
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "生日宴助手",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F8FAFC",
+    "backgroundTextStyle": "dark"
   },
   "tabBar": {
-    "color": "#A0A0A0",
-    "selectedColor": "#C9A96E",
-    "borderStyle": "black",
-    "backgroundColor": "#1A1A2E",
+    "color": "#64748B",
+    "selectedColor": "#111827",
+    "borderStyle": "white",
+    "backgroundColor": "#FFFFFF",
     "list": [
       {
         "pagePath": "pages/dashboard/index",
@@ -107,12 +82,6 @@
         "text": "宴会",
         "iconPath": "static/tabbar/banquet.png",
         "selectedIconPath": "static/tabbar/banquet-active.png"
-      },
-      {
-        "pagePath": "pages/finance/index",
-        "text": "财务",
-        "iconPath": "static/tabbar/finance.png",
-        "selectedIconPath": "static/tabbar/finance-active.png"
       }
     ]
   }

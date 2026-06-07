@@ -29,11 +29,12 @@ defineEmits(['action'])
   align-items: center;
   justify-content: center;
   padding: 80rpx 48rpx;
+  color: $text-tertiary;
 }
 
 .empty-icon {
-  font-size: 80rpx;
-  margin-bottom: 24rpx;
+  font-size: 64rpx;
+  margin-bottom: 20rpx;
 }
 
 .empty-title {
@@ -51,14 +52,15 @@ defineEmits(['action'])
 }
 
 .empty-action {
-  padding: 16rpx 48rpx;
-  background: $primary-gradient;
-  border-radius: $radius-round;
+  padding: 16rpx 40rpx;
+  background: $primary;
+  border-radius: $radius-md;
+  box-shadow: $shadow-primary;
 }
 
 .action-text {
   font-size: $font-base;
-  color: $bg-primary;
+  color: #FFFFFF;
   font-weight: 600;
 }
 </style>

@@ -1,20 +1,17 @@
 <template>
   <view class="create-page">
-    <scroll-view scroll-y class="scroll-content">
+    <view class="scroll-content">
       <view class="form-section">
-        <text class="section-title">创建宴会项目</text>
+        <text class="section-title">新建宴会记录</text>
 
         <view class="form-item">
-          <text class="form-label">客户名称 <text class="required">*</text></text>
-          <input class="form-input" v-model="form.clientName" placeholder="请输入客户名称" />
-        </view>
-
-        <view class="form-item">
-          <text class="form-label">宴会日期 <text class="required">*</text></text>
+          <text class="form-label"
+            >宴会日期 <text class="required">*</text></text
+          >
           <picker mode="date" :value="form.eventDate" @change="onDateChange">
             <view class="date-picker">
               <text class="date-text" :class="{ placeholder: !form.eventDate }">
-                {{ form.eventDate || '请选择日期' }}
+                {{ form.eventDate || "请选择日期" }}
               </text>
               <text class="date-arrow">›</text>
             </view>
@@ -23,68 +20,74 @@
 
         <view class="form-item">
           <text class="form-label">场地</text>
-          <input class="form-input" v-model="form.venue" placeholder="宴会场地（选填）" />
-        </view>
-
-        <view class="form-item">
-          <text class="form-label">预算金额</text>
-          <input class="form-input" type="digit" v-model="form.budgetAmount" placeholder="预算金额（选填）" />
+          <view class="form-control">
+            <input
+              class="form-input"
+              v-model="form.venue"
+              placeholder="宴会场地（选填）"
+            />
+          </view>
         </view>
 
         <view class="form-item">
           <text class="form-label">备注</text>
-          <textarea class="form-textarea" v-model="form.remark" placeholder="备注信息（选填）" maxlength="500" />
+          <textarea
+            class="form-textarea"
+            v-model="form.remark"
+            placeholder="备注信息（选填）"
+            maxlength="500"
+          />
         </view>
       </view>
 
       <view class="submit-section">
-        <view class="submit-btn" :class="{ disabled: !canSubmit }" @tap="submitCreate">
-          <text class="submit-text">创建宴会</text>
+        <view
+          class="submit-btn"
+          :class="{ disabled: !canSubmit }"
+          @tap="submitCreate"
+        >
+          <text class="submit-text">保存宴会</text>
         </view>
       </view>
-    </scroll-view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useBanquetStore } from '@/stores/banquet'
+import { ref, computed } from "vue";
+import { useBanquetStore } from "@/stores/banquet";
 
-const banquetStore = useBanquetStore()
-const submitting = ref(false)
+const banquetStore = useBanquetStore();
+const submitting = ref(false);
 
 const form = ref({
-  clientName: '',
-  eventDate: '',
-  venue: '',
-  budgetAmount: '',
-  remark: ''
-})
+  eventDate: "",
+  venue: "",
+  remark: "",
+});
 
-const canSubmit = computed(() => form.value.clientName && form.value.eventDate)
+const canSubmit = computed(() => form.value.eventDate);
 
 function onDateChange(e: any) {
-  form.value.eventDate = e.detail.value
+  form.value.eventDate = e.detail.value;
 }
 
 async function submitCreate() {
-  if (!canSubmit.value || submitting.value) return
-  submitting.value = true
+  if (!canSubmit.value || submitting.value) return;
+  submitting.value = true;
 
   try {
     await banquetStore.add({
-      clientName: form.value.clientName,
       eventDate: form.value.eventDate,
       venue: form.value.venue,
-      budgetAmount: parseFloat(form.value.budgetAmount) || 0,
-      remark: form.value.remark
-    })
-    uni.showToast({ title: '创建成功', icon: 'success' })
-    setTimeout(() => uni.navigateBack(), 800)
+      remark: form.value.remark,
+    });
+    uni.showToast({ title: "创建成功", icon: "success" });
+    setTimeout(() => uni.navigateBack(), 800);
   } catch (e) {
-    uni.showToast({ title: '创建失败', icon: 'none' })
+    uni.showToast({ title: "创建失败", icon: "none" });
   } finally {
-    submitting.value = false
+    submitting.value = false;
   }
 }
 </script>
@@ -93,18 +96,21 @@ async function submitCreate() {
 .create-page {
   min-height: 100vh;
   background: $bg-primary;
+  overflow-x: hidden;
 }
 
 .scroll-content {
   padding: 24rpx;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .form-section {
   background: $glass-bg;
-  backdrop-filter: $glass-blur;
   border: $glass-border;
   border-radius: $radius-lg;
   padding: 32rpx 24rpx;
+  box-shadow: $shadow-card;
 }
 
 .section-title {
@@ -126,21 +132,34 @@ async function submitCreate() {
   margin-bottom: 8rpx;
 }
 
+.form-control {
+  min-height: 88rpx;
+  padding: 0 20rpx;
+  background: $bg-secondary;
+  border: 1rpx solid #e2e8f0;
+  border-radius: $radius-md;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
 .required {
   color: $danger;
 }
 
 .form-input {
+  flex: 1;
   width: 100%;
-  padding: 16rpx 20rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
-  border-radius: $radius-md;
+  height: 88rpx;
+  min-height: 88rpx;
+  background: transparent;
+  border: none;
   color: $text-primary;
   font-size: $font-base;
+  box-sizing: border-box;
 
   &:focus {
-    border-color: rgba(201, 169, 110, 0.4);
+    border-color: #94a3b8;
   }
 }
 
@@ -148,11 +167,12 @@ async function submitCreate() {
   width: 100%;
   min-height: 140rpx;
   padding: 16rpx 20rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  background: $bg-secondary;
+  border: 1rpx solid #e2e8f0;
   border-radius: $radius-md;
   color: $text-primary;
   font-size: $font-base;
+  box-sizing: border-box;
 }
 
 .date-picker {
@@ -160,9 +180,10 @@ async function submitCreate() {
   justify-content: space-between;
   align-items: center;
   padding: 16rpx 20rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  background: $bg-secondary;
+  border: 1rpx solid #e2e8f0;
   border-radius: $radius-md;
+  box-sizing: border-box;
 }
 
 .date-text {
@@ -186,7 +207,7 @@ async function submitCreate() {
 .submit-btn {
   width: 100%;
   padding: 28rpx;
-  background: $primary-gradient;
+  background: $primary;
   border-radius: $radius-lg;
   text-align: center;
 

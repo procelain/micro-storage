@@ -55,25 +55,15 @@ export function formatQuantity(qty: number, unit: string = ''): string {
   return qty + (unit ? unit : '')
 }
 
-// 利润颜色
-export function getProfitColor(profit: number): string {
-  return profit >= 0 ? '#2ECC71' : '#E74C3C'
-}
-
-// 利润前缀
-export function getProfitPrefix(profit: number): string {
-  return profit >= 0 ? '+' : ''
-}
-
 // 宴会状态颜色映射
 export function getStatusColor(status: string): string {
   const map: Record<string, string> = {
-    '筹备中': '#F39C12',
-    '进行中': '#3498DB',
-    '已完成': '#2ECC71',
-    '已结算': '#C9A96E'
+    '筹备中': '#D97706',
+    '进行中': '#2563EB',
+    '已完成': '#16A34A',
+    '已结算': '#111827'
   }
-  return map[status] || '#A0A0A0'
+  return map[status] || '#64748B'
 }
 
 // 分类颜色映射
@@ -84,7 +74,9 @@ export function getCategoryColor(category: string): string {
     '布艺': '#6BCB77',
     '餐具': '#4D96FF',
     '道具': '#9B59B6',
+    '乳胶': '#EC4899',
+    '铝膜': '#2563EB',
     '其他': '#A0A0A0'
   }
-  return map[category] || '#A0A0A0'
+  return map[category] || '#94A3B8'
 }

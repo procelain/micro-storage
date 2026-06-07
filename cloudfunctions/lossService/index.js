@@ -1,5 +1,5 @@
 // 损耗服务 - 损耗录入、扣减库存、图文上传
-const { cloud, db, _, success, fail } = require('../shared/utils')
+const { cloud, db, _, success, fail } = require('./shared/utils')
 
 exports.main = async (event, context) => {
   const { action, data } = event
@@ -83,14 +83,6 @@ async function createLoss(data) {
     }
   })
 
-  // 4. 更新宴会总成本
-  await db.collection('banquets').doc(banquetId).update({
-    data: {
-      totalCost: _.inc(costAmount),
-      updatedAt: db.serverDate()
-    }
-  })
-
   return success({ _id: res._id, ...lossRecord }, '损耗记录已添加')
 }
 
@@ -106,11 +98,6 @@ async function deleteLoss(data) {
   // 回退库存
   await db.collection('materials').doc(loss.materialId).update({
     data: { stock: _.inc(totalQty), updatedAt: db.serverDate() }
-  })
-
-  // 回退宴会成本
-  await db.collection('banquets').doc(loss.banquetId).update({
-    data: { totalCost: _.inc(-loss.costAmount), updatedAt: db.serverDate() }
   })
 
   // 删除记录

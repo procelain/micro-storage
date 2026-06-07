@@ -6,7 +6,6 @@ export interface Purchase {
   quantity: number
   unitPrice: number
   totalAmount: number
-  supplierId: string
   purchaseDate: string
   remark: string
   createdAt: string
@@ -14,7 +13,6 @@ export interface Purchase {
 
 export interface PurchaseListParams {
   materialId?: string
-  supplierId?: string
   startDate?: string
   endDate?: string
   page?: number
@@ -31,7 +29,6 @@ export function createPurchase(data: {
   materialId: string
   quantity: number
   unitPrice: number
-  supplierId?: string
   purchaseDate?: string
   remark?: string
 }) {

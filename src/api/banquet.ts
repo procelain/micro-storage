@@ -2,12 +2,8 @@ import { callFunction } from './cloud'
 
 export interface Banquet {
   _id: string
-  clientName: string
   eventDate: string
   venue: string
-  budgetAmount: number
-  actualRevenue: number
-  totalCost: number
   status: '筹备中' | '进行中' | '已完成' | '已结算'
   remark: string
   lossRecords?: LossRecord[]
@@ -48,10 +44,8 @@ export function getBanquetDetail(id: string) {
 
 // 创建宴会
 export function createBanquet(data: {
-  clientName: string
   eventDate: string
   venue?: string
-  budgetAmount?: number
   remark?: string
 }) {
   return callFunction<Banquet>('banquetService', 'create', data)
@@ -70,11 +64,6 @@ export function deleteBanquet(id: string) {
 // 更新宴会状态
 export function updateBanquetStatus(id: string, status: string) {
   return callFunction<null>('banquetService', 'updateStatus', { id, status })
-}
-
-// 设置实际收入
-export function setBanquetRevenue(id: string, actualRevenue: number) {
-  return callFunction<null>('banquetService', 'setRevenue', { id, actualRevenue })
 }
 
 // 损耗列表

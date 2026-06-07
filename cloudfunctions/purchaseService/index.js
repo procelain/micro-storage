@@ -1,5 +1,5 @@
 // 进货服务 - 进货录入、自动更新库存
-const { cloud, db, _, success, fail, queryWithPage } = require('../shared/utils')
+const { cloud, db, _, success, fail, queryWithPage } = require('./shared/utils')
 
 exports.main = async (event, context) => {
   const { action, data } = event
@@ -18,25 +18,45 @@ exports.main = async (event, context) => {
   }
 }
 
+function isMissingCollectionError(error) {
+  const message = error?.message || error?.errMsg || ''
+  return error?.errCode === -502005
+    || message.includes('database collection not exists')
+    || message.includes('Db or Table not exist')
+}
+
+async function ensureCollection(name) {
+  try {
+    await db.createCollection(name)
+  } catch (e) {}
+}
+
 // 进货列表
 async function listPurchases(data = {}) {
-  const { materialId, supplierId, startDate, endDate, page = 1, pageSize = 20 } = data
+  const { materialId, startDate, endDate, page = 1, pageSize = 20 } = data
   const where = {}
 
   if (materialId) where.materialId = materialId
-  if (supplierId) where.supplierId = supplierId
   if (startDate || endDate) {
     where.purchaseDate = {}
     if (startDate) where.purchaseDate = _.gte(new Date(startDate))
     if (endDate) where.purchaseDate = _.lte(new Date(endDate))
   }
 
-  return success(await queryWithPage('purchases', where, { page, pageSize, orderBy: 'purchaseDate', order: 'desc' }))
+  try {
+    return success(await queryWithPage('purchases', where, { page, pageSize, orderBy: 'purchaseDate', order: 'desc' }))
+  } catch (e) {
+    if (isMissingCollectionError(e)) {
+      await ensureCollection('purchases')
+      return success({ list: [], total: 0, page, pageSize, totalPages: 0 })
+    }
+    throw e
+  }
 }
 
 // 创建进货记录（事务：写入进货记录 + 更新库存 + 重新计算均价）
 async function createPurchase(data) {
-  const { materialId, quantity, unitPrice, supplierId, purchaseDate, remark = '' } = data
+  const { materialId, quantity, unitPrice, purchaseDate, remark = '' } = data
   if (!materialId || !quantity || !unitPrice) return fail('参数不完整')
 
   const totalAmount = Math.round(quantity * unitPrice * 100) / 100
@@ -47,21 +67,38 @@ async function createPurchase(data) {
     quantity,
     unitPrice,
     totalAmount,
-    supplierId: supplierId || '',
     purchaseDate: purchaseDate ? new Date(purchaseDate) : db.serverDate(),
     remark,
     createdAt: db.serverDate()
   }
 
-  const res = await db.collection('purchases').add({ data: purchase })
+  let res
+  try {
+    res = await db.collection('purchases').add({ data: purchase })
+  } catch (e) {
+    if (isMissingCollectionError(e)) {
+      await ensureCollection('purchases')
+      res = await db.collection('purchases').add({ data: purchase })
+    } else {
+      throw e
+    }
+  }
 
   // 2. 更新库存数量
-  await db.collection('materials').doc(materialId).update({
-    data: {
-      stock: _.inc(quantity),
-      updatedAt: db.serverDate()
+  try {
+    await db.collection('materials').doc(materialId).update({
+      data: {
+        stock: _.inc(quantity),
+        updatedAt: db.serverDate()
+      }
+    })
+  } catch (e) {
+    if (isMissingCollectionError(e)) {
+      await ensureCollection('materials')
+      return fail('物资档案未初始化，请先新增气球')
     }
-  })
+    throw e
+  }
 
   // 3. 重新计算加权均价
   const materialDoc = await db.collection('materials').doc(materialId).get()

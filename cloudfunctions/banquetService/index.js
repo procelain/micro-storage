@@ -1,5 +1,5 @@
 // 宴会服务 - 宴会CRUD、状态流转
-const { cloud, db, _, success, fail, queryWithPage } = require('../shared/utils')
+const { cloud, db, _, success, fail, queryWithPage } = require('./shared/utils')
 
 exports.main = async (event, context) => {
   const { action, data } = event
@@ -17,8 +17,6 @@ exports.main = async (event, context) => {
       return await deleteBanquet(data)
     case 'updateStatus':
       return await updateStatus(data)
-    case 'setRevenue':
-      return await setRevenue(data)
     default:
       return fail('未知操作')
   }
@@ -31,7 +29,7 @@ async function listBanquets(data = {}) {
 
   if (status) where.status = status
   if (keyword) {
-    where.clientName = db.RegExp({ regexp: keyword, options: 'i' })
+    where.venue = db.RegExp({ regexp: keyword, options: 'i' })
   }
 
   return success(await queryWithPage('banquets', where, { page, pageSize, orderBy: 'eventDate', order: 'desc' }))
@@ -57,16 +55,12 @@ async function getDetail(data) {
 
 // 创建宴会
 async function createBanquet(data) {
-  const { clientName, eventDate, venue, budgetAmount = 0, remark = '' } = data
-  if (!clientName || !eventDate) return fail('客户名称和宴会日期不能为空')
+  const { eventDate, venue, remark = '' } = data
+  if (!eventDate) return fail('宴会日期不能为空')
 
   const banquet = {
-    clientName,
     eventDate: new Date(eventDate),
     venue: venue || '',
-    budgetAmount,
-    actualRevenue: 0,
-    totalCost: 0,
     status: '筹备中',
     remark,
     createdAt: db.serverDate(),
@@ -83,7 +77,7 @@ async function updateBanquet(data) {
   if (!id) return fail('缺少宴会ID')
 
   const fields = {}
-  const allowedFields = ['clientName', 'eventDate', 'venue', 'budgetAmount', 'remark']
+  const allowedFields = ['eventDate', 'venue', 'remark']
   for (const field of allowedFields) {
     if (updateData[field] !== undefined) {
       fields[field] = field === 'eventDate' ? new Date(updateData[field]) : updateData[field]
@@ -115,19 +109,4 @@ async function updateStatus(data) {
     data: { status, updatedAt: db.serverDate() }
   })
   return success(null, '状态已更新')
-}
-
-// 设置实际收入
-async function setRevenue(data) {
-  const { id, actualRevenue } = data
-  if (!id) return fail('缺少宴会ID')
-
-  await db.collection('banquets').doc(id).update({
-    data: {
-      actualRevenue,
-      status: '已结算',
-      updatedAt: db.serverDate()
-    }
-  })
-  return success(null, '收入已录入')
 }

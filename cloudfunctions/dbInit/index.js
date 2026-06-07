@@ -1,6 +1,6 @@
 // 数据库集合初始化脚本
 // 在微信云开发控制台中执行，或通过云函数调用
-const { cloud, db, success } = require('../shared/utils')
+const { cloud, db, success } = require('./shared/utils')
 
 const collections = [
   {
@@ -13,19 +13,18 @@ const collections = [
     ]
   },
   {
+    name: 'categories',
+    description: '分类配置',
+    indexes: [
+      { keys: { name: 1 }, options: { unique: false } }
+    ]
+  },
+  {
     name: 'purchases',
     description: '进货记录',
     indexes: [
       { keys: { materialId: 1 }, options: {} },
-      { keys: { supplierId: 1 }, options: {} },
       { keys: { purchaseDate: -1 }, options: {} }
-    ]
-  },
-  {
-    name: 'suppliers',
-    description: '供应商',
-    indexes: [
-      { keys: { name: 1 }, options: {} }
     ]
   },
   {
@@ -95,8 +94,15 @@ async function initCollections() {
 }
 
 async function initCategories() {
+  try {
+    await db.createCollection('categories')
+  } catch (e) {}
+
   for (const cat of categories) {
-    await db.collection('categories').add({ data: cat })
+    const exists = await db.collection('categories').where({ name: cat.name }).limit(1).get()
+    if (!exists.data.length) {
+      await db.collection('categories').add({ data: cat })
+    }
   }
   return success(categories)
 }

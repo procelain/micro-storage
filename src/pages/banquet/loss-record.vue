@@ -1,29 +1,31 @@
 <template>
   <view class="loss-record-page">
     <scroll-view scroll-y class="scroll-content">
-      <!-- 选择物资 -->
       <view class="form-section">
-        <text class="section-label">选择物资</text>
-        <view v-if="!selectedMaterial" class="select-btn" @tap="showMaterialPicker = true">
-          <text class="select-text">点击选择物资</text>
+        <text class="section-label">气球信息</text>
+        <view v-if="!selectedMaterial" class="select-btn" @tap="openMaterialPicker">
+          <text class="select-text">点击选择气球</text>
         </view>
-        <view v-else class="selected-material" @tap="showMaterialPicker = true">
+        <view v-else class="selected-material" @tap="openMaterialPicker">
           <text class="selected-name">{{ selectedMaterial.name }}</text>
-          <text class="selected-info">库存 {{ selectedMaterial.stock }}{{ selectedMaterial.unit }} · 均价 {{ formatMoney(selectedMaterial.avgPrice) }}</text>
+          <text class="selected-info">
+            {{ selectedMaterial.category || '其他' }} · {{ selectedMaterial.spec || '未填写规格' }} · 库存 {{ selectedMaterial.stock }}{{ selectedMaterial.unit }}
+          </text>
         </view>
       </view>
 
-      <!-- 损耗信息 -->
       <view class="form-section">
-        <text class="section-label">损耗明细</text>
+        <text class="section-label">使用记录</text>
 
         <view class="form-item">
-          <text class="form-label">消耗数量</text>
+          <text class="form-label">使用数量</text>
           <view class="qty-input">
             <view class="qty-btn" @tap="adjustConsumed(-1)">
               <text>-</text>
             </view>
-            <input class="qty-value" type="digit" v-model="form.consumedQty" />
+            <view class="qty-field">
+              <input class="qty-value" type="digit" v-model="form.consumedQty" />
+            </view>
             <view class="qty-btn" @tap="adjustConsumed(1)">
               <text>+</text>
             </view>
@@ -36,48 +38,49 @@
             <view class="qty-btn" @tap="adjustDamaged(-1)">
               <text>-</text>
             </view>
-            <input class="qty-value" type="digit" v-model="form.damagedQty" />
+            <view class="qty-field">
+              <input class="qty-value" type="digit" v-model="form.damagedQty" />
+            </view>
             <view class="qty-btn" @tap="adjustDamaged(1)">
               <text>+</text>
             </view>
           </view>
         </view>
 
-        <!-- 损坏照片上传 -->
         <view class="form-item" v-if="parseInt(form.damagedQty) > 0">
           <text class="form-label">损坏照片</text>
           <ImageUploader v-model="form.damagedImages" :maxCount="9" />
         </view>
 
         <view class="form-item">
-          <text class="form-label">说明备注</text>
-          <textarea class="form-textarea" v-model="form.remark" placeholder="损坏原因、处理方式等" maxlength="500" />
-        </view>
-
-        <!-- 成本预估 -->
-        <view class="cost-preview" v-if="totalCost > 0">
-          <text class="cost-label">预估成本</text>
-          <text class="cost-value">{{ formatMoney(totalCost) }}</text>
+          <text class="form-label">记录说明</text>
+          <textarea class="form-textarea" v-model="form.remark" placeholder="补充说明使用场景、损坏原因等" maxlength="500" />
         </view>
       </view>
 
-      <!-- 提交 -->
       <view class="submit-section">
         <view class="submit-btn" :class="{ disabled: !canSubmit }" @tap="submitLoss">
-          <text class="submit-text">确认录入</text>
+          <text class="submit-text">保存记录</text>
         </view>
       </view>
     </scroll-view>
 
-    <!-- 物资选择弹窗 -->
     <view v-if="showMaterialPicker" class="picker-mask" @tap="showMaterialPicker = false">
       <view class="picker-panel" @tap.stop>
         <view class="picker-header">
-          <text class="picker-title">选择物资</text>
+          <text class="picker-title">选择气球</text>
           <text class="picker-close" @tap="showMaterialPicker = false">✕</text>
         </view>
         <scroll-view scroll-y class="picker-list">
           <view
+            v-if="materialList.length === 0"
+            class="picker-empty"
+          >
+            <text class="picker-empty-title">暂无可用气球</text>
+            <text class="picker-empty-desc">请先在库存中新增并补货，当前有库存的气球才会出现在这里</text>
+          </view>
+          <view
+            v-else
             v-for="item in materialList"
             :key="item._id"
             class="picker-item"
@@ -100,7 +103,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useBanquetStore } from '@/stores/banquet'
 import { getMaterialList } from '@/api/material'
-import { formatMoney } from '@/utils/format'
 import ImageUploader from '@/components/ImageUploader.vue'
 import type { Material } from '@/api/material'
 
@@ -118,13 +120,6 @@ const form = ref({
   remark: ''
 })
 
-const totalCost = computed(() => {
-  const consumed = parseInt(form.value.consumedQty) || 0
-  const damaged = parseInt(form.value.damagedQty) || 0
-  const price = selectedMaterial.value?.avgPrice || 0
-  return (consumed + damaged) * price
-})
-
 const canSubmit = computed(() => {
   return selectedMaterial.value &&
     (parseInt(form.value.consumedQty) > 0 || parseInt(form.value.damagedQty) > 0)
@@ -135,10 +130,9 @@ onMounted(async () => {
   const page = pages[pages.length - 1] as any
   banquetId.value = page?.options?.banquetId || page?.$page?.options?.banquetId || ''
 
-  // 加载物资列表
   try {
     const res = await getMaterialList({ pageSize: 200 })
-    materialList.value = res.list.filter(m => m.stock > 0) // 只显示有库存的
+    materialList.value = res.list.filter(m => m.stock > 0)
   } catch (e) {
     console.error('加载物资列表失败', e)
   }
@@ -159,6 +153,13 @@ function selectMaterial(item: Material) {
   showMaterialPicker.value = false
 }
 
+function openMaterialPicker() {
+  if (materialList.value.length === 0) {
+    uni.showToast({ title: '暂无可用气球，请先新增并补货', icon: 'none' })
+  }
+  showMaterialPicker.value = true
+}
+
 async function submitLoss() {
   if (!canSubmit.value || submitting.value) return
   submitting.value = true
@@ -172,10 +173,10 @@ async function submitLoss() {
       damagedImages: form.value.damagedImages,
       remark: form.value.remark
     })
-    uni.showToast({ title: '录入成功', icon: 'success' })
+    uni.showToast({ title: '保存成功', icon: 'success' })
     setTimeout(() => uni.navigateBack(), 800)
   } catch (e) {
-    uni.showToast({ title: '录入失败', icon: 'none' })
+    uni.showToast({ title: '保存失败', icon: 'none' })
   } finally {
     submitting.value = false
   }
@@ -184,21 +185,24 @@ async function submitLoss() {
 
 <style lang="scss" scoped>
 .loss-record-page {
-  min-height: 100vh;
+  height: 100vh;
   background: $bg-primary;
+  overflow-x: hidden;
 }
 
 .scroll-content {
+  height: 100vh;
   padding: 24rpx;
+  box-sizing: border-box;
 }
 
 .form-section {
   background: $glass-bg;
-  backdrop-filter: $glass-blur;
   border: $glass-border;
   border-radius: $radius-lg;
   padding: 24rpx;
   margin-bottom: 24rpx;
+  box-shadow: $shadow-card;
 }
 
 .section-label {
@@ -211,8 +215,8 @@ async function submitLoss() {
 
 .select-btn {
   padding: 24rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 2rpx dashed rgba(201, 169, 110, 0.3);
+  background: $bg-secondary;
+  border: 2rpx dashed #CBD5E1;
   border-radius: $radius-md;
   text-align: center;
 }
@@ -224,8 +228,8 @@ async function submitLoss() {
 
 .selected-material {
   padding: 20rpx;
-  background: rgba(201, 169, 110, 0.08);
-  border: 1rpx solid rgba(201, 169, 110, 0.3);
+  background: $bg-tertiary;
+  border: 1rpx solid #CBD5E1;
   border-radius: $radius-md;
 }
 
@@ -260,12 +264,24 @@ async function submitLoss() {
   gap: 16rpx;
 }
 
+.qty-field {
+  flex: 1;
+  min-height: 88rpx;
+  padding: 0 20rpx;
+  background: $bg-secondary;
+  border: 1rpx solid #E2E8F0;
+  border-radius: $radius-md;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
 .qty-btn {
   width: 64rpx;
   height: 64rpx;
   border-radius: $radius-md;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1rpx solid rgba(255, 255, 255, 0.1);
+  background: $bg-secondary;
+  border: 1rpx solid #E2E8F0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -273,48 +289,33 @@ async function submitLoss() {
   color: $primary;
 
   &:active {
-    background: rgba(201, 169, 110, 0.2);
+    background: $bg-tertiary;
   }
 }
 
 .qty-value {
   flex: 1;
+  height: 88rpx;
+  min-height: 88rpx;
   text-align: center;
   font-size: $font-2xl;
   color: $text-primary;
   font-weight: 700;
+  background: transparent;
+  border: none;
+  box-sizing: border-box;
 }
 
 .form-textarea {
   width: 100%;
   min-height: 120rpx;
   padding: 16rpx 20rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  background: $bg-secondary;
+  border: 1rpx solid #E2E8F0;
   border-radius: $radius-md;
   color: $text-primary;
   font-size: $font-base;
-}
-
-.cost-preview {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16rpx 20rpx;
-  background: rgba(201, 169, 110, 0.08);
-  border-radius: $radius-md;
-  margin-top: 16rpx;
-}
-
-.cost-label {
-  font-size: $font-sm;
-  color: $text-tertiary;
-}
-
-.cost-value {
-  font-size: $font-lg;
-  color: $primary;
-  font-weight: 700;
+  box-sizing: border-box;
 }
 
 .submit-section {
@@ -324,9 +325,10 @@ async function submitLoss() {
 .submit-btn {
   width: 100%;
   padding: 28rpx;
-  background: $primary-gradient;
+  background: $primary;
   border-radius: $radius-lg;
   text-align: center;
+  box-sizing: border-box;
 
   &.disabled {
     opacity: 0.5;
@@ -365,7 +367,7 @@ async function submitLoss() {
   justify-content: space-between;
   align-items: center;
   padding: 24rpx 32rpx;
-  border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1rpx solid #E2E8F0;
 }
 
 .picker-title {
@@ -383,6 +385,7 @@ async function submitLoss() {
 .picker-list {
   max-height: 60vh;
   padding: 16rpx 32rpx;
+  box-sizing: border-box;
 }
 
 .picker-item {
@@ -394,8 +397,30 @@ async function submitLoss() {
   margin-bottom: 8rpx;
 
   &.selected {
-    background: rgba(201, 169, 110, 0.12);
+    background: $bg-tertiary;
   }
+}
+
+.picker-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 320rpx;
+  padding: 24rpx;
+  text-align: center;
+}
+
+.picker-empty-title {
+  font-size: $font-md;
+  color: $text-primary;
+  font-weight: 600;
+}
+
+.picker-empty-desc {
+  margin-top: 8rpx;
+  font-size: $font-sm;
+  color: $text-tertiary;
 }
 
 .picker-item-left {

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { onLaunch, onShow } from '@dcloudio/uni-app'
+import { cloudInit } from '@/api/cloud'
 
 onLaunch(() => {
+  cloudInit()
   console.log('App Launch')
 })
 

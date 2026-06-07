@@ -1,5 +1,5 @@
 // 预警服务 - 低库存检测、滞销检测（定时触发器调用）
-const { cloud, db, _, success, fail, daysAgo } = require('../shared/utils')
+const { cloud, db, _, success, fail, daysAgo } = require('./shared/utils')
 
 exports.main = async (event, context) => {
   const { action, data } = event

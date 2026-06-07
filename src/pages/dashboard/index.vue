@@ -19,37 +19,24 @@
     </view>
 
     <scroll-view scroll-y class="scroll-content" :style="{ paddingTop: (statusBarHeight + 60) + 'px' }">
-      <!-- 收支概览卡片 -->
       <view class="stat-cards">
-        <view class="stat-card purchase-card">
-          <view class="stat-card-glow"></view>
-          <text class="stat-label">本月进货</text>
+        <view class="stat-card neutral-card">
+          <text class="stat-label">低库存提醒</text>
+          <text class="stat-value">{{ overview.lowStockCount }}</text>
+          <text class="stat-desc">需要尽快补货的气球</text>
+        </view>
+        <view class="stat-card neutral-card">
+          <text class="stat-label">滞销提醒</text>
+          <text class="stat-value">{{ overview.slowCount }}</text>
+          <text class="stat-desc">近期使用偏少的气球</text>
+        </view>
+        <view class="stat-card neutral-card">
+          <text class="stat-label">本月补货</text>
           <text class="stat-value">{{ formatMoney(overview.totalPurchase) }}</text>
-          <view class="stat-indicator">
-            <view class="indicator-dot purchase-dot"></view>
-          </view>
-        </view>
-        <view class="stat-card revenue-card">
-          <view class="stat-card-glow"></view>
-          <text class="stat-label">本月收入</text>
-          <text class="stat-value">{{ formatMoney(overview.totalRevenue) }}</text>
-          <view class="stat-indicator">
-            <view class="indicator-dot revenue-dot"></view>
-          </view>
-        </view>
-        <view class="stat-card profit-card">
-          <view class="stat-card-glow"></view>
-          <text class="stat-label">净利润</text>
-          <text class="stat-value" :class="overview.netProfit >= 0 ? 'profit-positive' : 'profit-negative'">
-            {{ formatMoney(overview.netProfit) }}
-          </text>
-          <view class="stat-indicator">
-            <view class="indicator-dot profit-dot"></view>
-          </view>
+          <text class="stat-desc">按补货记录统计</text>
         </view>
       </view>
 
-      <!-- 预警入口 -->
       <view class="alert-section" v-if="alertCount > 0">
         <view class="alert-card low-stock" @tap="goToAlertList('lowStock')">
           <view class="alert-icon-wrap">
@@ -57,7 +44,7 @@
           </view>
           <view class="alert-info">
             <text class="alert-title">低库存预警</text>
-            <text class="alert-desc">{{ overview.lowStockCount }} 项物资需要补货</text>
+            <text class="alert-desc">{{ overview.lowStockCount }} 项气球需要补货</text>
           </view>
           <text class="alert-arrow">›</text>
         </view>
@@ -67,16 +54,15 @@
           </view>
           <view class="alert-info">
             <text class="alert-title">滞销提醒</text>
-            <text class="alert-desc">{{ overview.slowCount }} 项物资长期无消耗</text>
+            <text class="alert-desc">{{ overview.slowCount }} 项气球近期使用较少</text>
           </view>
           <text class="alert-arrow">›</text>
         </view>
       </view>
 
-      <!-- 库存趋势图 -->
       <view class="chart-section">
         <view class="section-header">
-          <text class="section-title">库存趋势</text>
+          <text class="section-title">库存变化</text>
           <text class="section-subtitle">近30天</text>
         </view>
         <view class="chart-container">
@@ -91,10 +77,9 @@
         </view>
       </view>
 
-      <!-- 高损耗物资TOP10 -->
       <view class="chart-section">
         <view class="section-header">
-          <text class="section-title">高损耗物资</text>
+          <text class="section-title">气球使用较多</text>
           <text class="section-subtitle">TOP10</text>
         </view>
         <view class="top-loss-list">
@@ -111,7 +96,7 @@
             <text class="loss-amount">{{ formatMoney(item.totalCost) }}</text>
           </view>
           <view v-if="topLossMaterials.length === 0" class="list-empty">
-            <text class="empty-text">暂无损耗记录</text>
+            <text class="empty-text">暂无使用记录</text>
           </view>
         </view>
       </view>
@@ -137,16 +122,14 @@ const systemInfo = uni.getSystemInfoSync()
 statusBarHeight.value = systemInfo.statusBarHeight || 0
 // #endif
 
-// 看板数据（使用计算属性从 store 获取）
 const overview = computed(() => appStore.dashboardOverview || {
-  totalPurchase: 0, totalRevenue: 0, totalLossCost: 0,
-  netProfit: 0, lowStockCount: 0, slowCount: 0
+  totalPurchase: 0, totalLossCost: 0,
+  lowStockCount: 0, slowCount: 0
 })
 const stockTrend = computed(() => appStore.stockTrend)
 const topLossMaterials = computed(() => appStore.topLossMaterials)
 const alertCount = computed(() => (overview.value.lowStockCount || 0) + (overview.value.slowCount || 0))
 
-// 问候语
 const greetingText = computed(() => {
   const h = new Date().getHours()
   if (h < 6) return '夜深了'
@@ -162,10 +145,8 @@ const todayText = computed(() => {
   return `${months[d.getMonth()]} ${d.getDate()}日`
 })
 
-// 跳转到预警列表
 function goToAlertList(type: 'lowStock' | 'slow') {
   uni.switchTab({ url: '/pages/inventory/index' })
-  // 通过 eventChannel 或 store 传递筛选条件
   setTimeout(() => {
     uni.$emit('inventory:filter', { alertType: type })
   }, 300)
@@ -179,13 +160,11 @@ function goToAlerts() {
   }
 }
 
-// 损耗柱状条宽度
 function getLossBarWidth(cost: number): number {
   const maxCost = Math.max(...topLossMaterials.value.map(m => m.totalCost), 1)
   return Math.max(10, (cost / maxCost) * 100)
 }
 
-// 绘制趋势图
 function drawStockTrendChart() {
   if (stockTrend.value.length === 0) return
 
@@ -199,7 +178,6 @@ function drawStockTrendChart() {
     const chartW = w - padding.left - padding.right
     const chartH = h - padding.top - padding.bottom
 
-    // 背景
     ctx.setFillStyle('transparent')
     ctx.fillRect(0, 0, w, h)
 
@@ -209,8 +187,7 @@ function drawStockTrendChart() {
     const minVal = Math.min(...values, 0)
     const range = maxVal - minVal || 1
 
-    // 网格线
-    ctx.setStrokeStyle('rgba(201, 169, 110, 0.1)')
+    ctx.setStrokeStyle('rgba(148, 163, 184, 0.2)')
     ctx.setLineWidth(0.5)
     for (let i = 0; i <= 4; i++) {
       const y = padding.top + (chartH / 4) * i
@@ -218,18 +195,16 @@ function drawStockTrendChart() {
       ctx.moveTo(padding.left, y)
       ctx.lineTo(w - padding.right, y)
       ctx.stroke()
-      // Y轴标签
       const val = maxVal - (range / 4) * i
       ctx.setFontSize(10)
-      ctx.setFillStyle('#A0A0A0')
+      ctx.setFillStyle('#64748B')
       ctx.setTextAlign('right')
       ctx.fillText(Math.round(val).toString(), padding.left - 8, y + 4)
     }
 
-    // 渐变填充
     const gradient = ctx.createLinearGradient(0, padding.top, 0, h - padding.bottom)
-    gradient.addColorStop(0, 'rgba(201, 169, 110, 0.3)')
-    gradient.addColorStop(1, 'rgba(201, 169, 110, 0.02)')
+    gradient.addColorStop(0, 'rgba(37, 99, 235, 0.18)')
+    gradient.addColorStop(1, 'rgba(37, 99, 235, 0.02)')
 
     ctx.beginPath()
     ctx.moveTo(padding.left, h - padding.bottom)
@@ -244,9 +219,8 @@ function drawStockTrendChart() {
     ctx.setFillStyle(gradient)
     ctx.fill()
 
-    // 折线
     ctx.beginPath()
-    ctx.setStrokeStyle('#C9A96E')
+    ctx.setStrokeStyle('#2563EB')
     ctx.setLineWidth(2)
     data.forEach((d, i) => {
       const x = padding.left + (chartW / (data.length - 1)) * i
@@ -256,24 +230,22 @@ function drawStockTrendChart() {
     })
     ctx.stroke()
 
-    // 数据点（每隔5个显示一个）
     data.forEach((d, i) => {
       if (i % 5 !== 0 && i !== data.length - 1) return
       const x = padding.left + (chartW / (data.length - 1)) * i
       const y = padding.top + chartH - ((d.totalStock - minVal) / range) * chartH
       ctx.beginPath()
       ctx.arc(x, y, 3, 0, Math.PI * 2)
-      ctx.setFillStyle('#C9A96E')
+      ctx.setFillStyle('#2563EB')
       ctx.fill()
       ctx.beginPath()
       ctx.arc(x, y, 1.5, 0, Math.PI * 2)
-      ctx.setFillStyle('#1A1A2E')
+      ctx.setFillStyle('#FFFFFF')
       ctx.fill()
     })
 
-    // X轴日期标签
     ctx.setFontSize(9)
-    ctx.setFillStyle('#A0A0A0')
+    ctx.setFillStyle('#64748B')
     ctx.setTextAlign('center')
     const labelInterval = Math.max(1, Math.floor(data.length / 5))
     data.forEach((d, i) => {
@@ -287,11 +259,9 @@ function drawStockTrendChart() {
   }).exec()
 }
 
-function onChartTouch(e: any) {
-  // 可扩展：触摸显示数据点详情
+function onChartTouch(_e: any) {
 }
 
-// 加载数据
 onMounted(async () => {
   try {
     await appStore.fetchDashboard()
@@ -323,8 +293,8 @@ onShow(async () => {
   left: 0;
   right: 0;
   z-index: 100;
-  background: linear-gradient(180deg, rgba(26, 26, 46, 0.98) 0%, rgba(26, 26, 46, 0.85) 100%);
-  backdrop-filter: blur(20px);
+  background: rgba(248, 250, 252, 0.96);
+  border-bottom: 1rpx solid #E2E8F0;
 }
 
 .nav-content {
@@ -343,7 +313,7 @@ onShow(async () => {
 
 .greeting-date {
   font-size: 24rpx;
-  color: $primary;
+  color: $text-tertiary;
   margin-top: 4rpx;
   display: block;
 }
@@ -385,7 +355,6 @@ onShow(async () => {
   min-height: 100vh;
 }
 
-// 收支概览卡片
 .stat-cards {
   display: flex;
   padding: 16rpx 24rpx;
@@ -395,27 +364,13 @@ onShow(async () => {
 .stat-card {
   flex: 1;
   background: $glass-bg;
-  backdrop-filter: $glass-blur;
   border: $glass-border;
   border-radius: $radius-lg;
   padding: 24rpx 20rpx;
   position: relative;
   overflow: hidden;
+  box-shadow: $shadow-card;
 }
-
-.stat-card-glow {
-  position: absolute;
-  top: -40rpx;
-  right: -40rpx;
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 50%;
-  opacity: 0.15;
-}
-
-.purchase-card .stat-card-glow { background: $warning; }
-.revenue-card .stat-card-glow { background: $success; }
-.profit-card .stat-card-glow { background: $primary; }
 
 .stat-label {
   font-size: $font-sm;
@@ -432,24 +387,13 @@ onShow(async () => {
   letter-spacing: -0.5px;
 }
 
-.profit-positive { color: $success; }
-.profit-negative { color: $danger; }
-
-.stat-indicator {
+.stat-desc {
+  display: block;
   margin-top: 12rpx;
+  font-size: $font-xs;
+  color: $text-tertiary;
 }
 
-.indicator-dot {
-  width: 24rpx;
-  height: 6rpx;
-  border-radius: 3rpx;
-}
-
-.purchase-dot { background: $warning; }
-.revenue-dot { background: $success; }
-.profit-dot { background: $primary; }
-
-// 预警区域
 .alert-section {
   padding: 8rpx 24rpx 16rpx;
   display: flex;
@@ -463,6 +407,7 @@ onShow(async () => {
   padding: 20rpx;
   border-radius: $radius-lg;
   gap: 12rpx;
+  box-shadow: $shadow-card;
 }
 
 .low-stock {
@@ -515,14 +460,13 @@ onShow(async () => {
   flex-shrink: 0;
 }
 
-// 图表区域
 .chart-section {
   margin: 16rpx 24rpx;
   background: $glass-bg;
-  backdrop-filter: $glass-blur;
   border: $glass-border;
   border-radius: $radius-lg;
   padding: 24rpx;
+  box-shadow: $shadow-card;
 }
 
 .section-header {
@@ -570,7 +514,6 @@ onShow(async () => {
   font-size: $font-base;
 }
 
-// 高损耗列表
 .top-loss-list {
   display: flex;
   flex-direction: column;
@@ -587,7 +530,7 @@ onShow(async () => {
   width: 44rpx;
   height: 44rpx;
   border-radius: $radius-sm;
-  background: rgba(255, 255, 255, 0.05);
+  background: $bg-tertiary;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -595,7 +538,7 @@ onShow(async () => {
 }
 
 .rank-top {
-  background: rgba(201, 169, 110, 0.2);
+  background: rgba(37, 99, 235, 0.12);
 }
 
 .rank-num {
@@ -605,7 +548,7 @@ onShow(async () => {
 }
 
 .rank-top .rank-num {
-  color: $primary;
+  color: $info;
 }
 
 .loss-info {
@@ -622,21 +565,21 @@ onShow(async () => {
 
 .loss-bar-wrap {
   height: 6rpx;
-  background: rgba(255, 255, 255, 0.05);
+  background: $bg-tertiary;
   border-radius: 3rpx;
   overflow: hidden;
 }
 
 .loss-bar {
   height: 100%;
-  background: $primary-gradient;
+  background: linear-gradient(90deg, #2563EB 0%, #60A5FA 100%);
   border-radius: 3rpx;
-  transition: width 0.6s ease-out-quart;
+  transition: width 0.3s ease;
 }
 
 .loss-amount {
   font-size: $font-sm;
-  color: $primary;
+  color: $text-secondary;
   font-weight: 500;
   flex-shrink: 0;
   min-width: 100rpx;

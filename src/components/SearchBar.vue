@@ -1,7 +1,7 @@
 <template>
   <view class="search-bar">
     <view class="search-input-wrap">
-      <text class="search-icon">🔍</text>
+      <text class="search-icon">⌕</text>
       <input
         class="search-input"
         :placeholder="placeholder"
@@ -48,26 +48,28 @@ function onClear() {
 
 <style lang="scss" scoped>
 .search-bar {
-  padding: 16rpx 24rpx;
+  padding: 16rpx 24rpx 12rpx;
 }
 
 .search-input-wrap {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1rpx solid rgba(201, 169, 110, 0.15);
-  border-radius: $radius-round;
-  padding: 16rpx 24rpx;
+  background: $bg-card;
+  border: $glass-border;
+  border-radius: $radius-md;
+  padding: 16rpx 20rpx;
   gap: 12rpx;
+  box-shadow: $shadow-card;
   transition: border-color $transition-fast;
 
   &:focus-within {
-    border-color: rgba(201, 169, 110, 0.4);
+    border-color: #CBD5E1;
   }
 }
 
 .search-icon {
-  font-size: 28rpx;
+  font-size: 30rpx;
+  color: $text-tertiary;
   flex-shrink: 0;
 }
 
@@ -86,7 +88,7 @@ function onClear() {
   width: 36rpx;
   height: 36rpx;
   border-radius: 18rpx;
-  background: rgba(255, 255, 255, 0.1);
+  background: $bg-tertiary;
   display: flex;
   align-items: center;
   justify-content: center;

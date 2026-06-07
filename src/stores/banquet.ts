@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Banquet, LossRecord } from '@/api/banquet'
-import { getBanquetList, getBanquetDetail, createBanquet, updateBanquet, deleteBanquet, updateBanquetStatus, setBanquetRevenue, createLossRecord, deleteLossRecord, getBanquetLossSummary } from '@/api/banquet'
+import { getBanquetList, getBanquetDetail, createBanquet, updateBanquet, deleteBanquet, updateBanquetStatus, createLossRecord, deleteLossRecord, getBanquetLossSummary } from '@/api/banquet'
 
 export const useBanquetStore = defineStore('banquet', () => {
   // 状态
@@ -43,7 +43,7 @@ export const useBanquetStore = defineStore('banquet', () => {
   }
 
   // 创建宴会
-  async function add(data: { clientName: string; eventDate: string; venue?: string; budgetAmount?: number; remark?: string }) {
+  async function add(data: { eventDate: string; venue?: string; remark?: string }) {
     const result = await createBanquet(data)
     await fetchList()
     return result
@@ -69,13 +69,6 @@ export const useBanquetStore = defineStore('banquet', () => {
     if (current.value && current.value._id === id) {
       current.value.status = status as Banquet['status']
     }
-    return result
-  }
-
-  // 设置收入
-  async function setRevenue(id: string, amount: number) {
-    const result = await setBanquetRevenue(id, amount)
-    await fetchDetail(id)
     return result
   }
 
@@ -113,6 +106,6 @@ export const useBanquetStore = defineStore('banquet', () => {
   return {
     list, current, total, loading, filters,
     fetchList, fetchDetail, add, edit, remove,
-    setStatus, setRevenue, addLossRecord, removeLossRecord, fetchLossSummary, setFilters
+    setStatus, addLossRecord, removeLossRecord, fetchLossSummary, setFilters
   }
 })

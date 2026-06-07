@@ -1,9 +1,0 @@
-{
-  "name": "financeService",
-  "version": "1.0.0",
-  "description": "财务服务 - 成本核算、利润计算、报表生成",
-  "main": "index.js",
-  "dependencies": {
-    "wx-server-sdk": "~2.6.3"
-  }
-}

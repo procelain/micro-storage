@@ -2,9 +2,7 @@ import { callFunction } from './cloud'
 
 export interface DashboardOverview {
   totalPurchase: number
-  totalRevenue: number
   totalLossCost: number
-  netProfit: number
   lowStockCount: number
   slowCount: number
 }

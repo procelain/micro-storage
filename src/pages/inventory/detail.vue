@@ -63,7 +63,6 @@
         <view v-for="purchase in purchaseList" :key="purchase._id" class="history-item">
           <view class="history-left">
             <text class="history-date">{{ formatDate(purchase.purchaseDate) }}</text>
-            <text class="history-supplier" v-if="purchase.supplierId">{{ purchase.supplierId }}</text>
           </view>
           <view class="history-right">
             <text class="history-qty">+{{ purchase.quantity }}{{ material?.unit }}</text>
@@ -145,10 +144,13 @@ function confirmDelete() {
 .detail-page {
   min-height: 100vh;
   background: $bg-primary;
+  overflow-x: hidden;
 }
 
 .scroll-content {
   padding: 24rpx;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .detail-header {
@@ -189,6 +191,7 @@ function confirmDelete() {
   font-weight: 700;
   color: $text-primary;
   display: block;
+  word-break: break-all;
 }
 
 .material-spec {
@@ -205,6 +208,7 @@ function confirmDelete() {
   border-radius: $radius-lg;
   padding: 32rpx;
   margin-bottom: 24rpx;
+  box-sizing: border-box;
 }
 
 .stock-main {
@@ -222,6 +226,7 @@ function confirmDelete() {
   display: flex;
   align-items: baseline;
   gap: 8rpx;
+  overflow: hidden;
 }
 
 .stock-value {
@@ -229,6 +234,8 @@ function confirmDelete() {
   font-weight: 700;
   color: $text-primary;
   letter-spacing: -2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stock-value.low-stock {
@@ -285,6 +292,7 @@ function confirmDelete() {
 
 .action-btn {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -319,6 +327,7 @@ function confirmDelete() {
   border: $glass-border;
   border-radius: $radius-lg;
   padding: 24rpx;
+  box-sizing: border-box;
 }
 
 .section-header {
@@ -337,6 +346,7 @@ function confirmDelete() {
   align-items: center;
   padding: 16rpx 0;
   border-bottom: 1rpx solid rgba(255, 255, 255, 0.03);
+  overflow: hidden;
 
   &:last-child {
     border-bottom: none;
@@ -346,6 +356,9 @@ function confirmDelete() {
 .history-left {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .history-date {
@@ -353,16 +366,12 @@ function confirmDelete() {
   color: $text-secondary;
 }
 
-.history-supplier {
-  font-size: $font-xs;
-  color: $text-tertiary;
-  margin-top: 4rpx;
-}
-
 .history-right {
   text-align: right;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
+  margin-left: 16rpx;
 }
 
 .history-qty {

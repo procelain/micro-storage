@@ -1,5 +1,5 @@
 // 物资服务 - 物资CRUD、库存更新、加权均价计算
-const { cloud, db, _, success, fail, queryWithPage } = require('../shared/utils')
+const { cloud, db, _, success, fail, queryWithPage } = require('./shared/utils')
 
 exports.main = async (event, context) => {
   const { action, data } = event
@@ -24,6 +24,19 @@ exports.main = async (event, context) => {
   }
 }
 
+function isMissingCollectionError(error) {
+  const message = error?.message || error?.errMsg || ''
+  return error?.errCode === -502005
+    || message.includes('database collection not exists')
+    || message.includes('Db or Table not exist')
+}
+
+async function ensureMaterialsCollection() {
+  try {
+    await db.createCollection('materials')
+  } catch (e) {}
+}
+
 // 物资列表（支持搜索、分类筛选、预警筛选）
 async function listMaterials(data = {}) {
   const { keyword, category, alertType, page = 1, pageSize = 50 } = data
@@ -42,15 +55,31 @@ async function listMaterials(data = {}) {
     where.isSlow = true
   }
 
-  return success(await queryWithPage('materials', where, { page, pageSize, orderBy: 'createdAt', order: 'desc' }))
+  try {
+    return success(await queryWithPage('materials', where, { page, pageSize, orderBy: 'createdAt', order: 'desc' }))
+  } catch (e) {
+    if (isMissingCollectionError(e)) {
+      await ensureMaterialsCollection()
+      return success({ list: [], total: 0, page, pageSize, totalPages: 0 })
+    }
+    throw e
+  }
 }
 
 // 物资详情
 async function getDetail(data) {
   const { id } = data
   if (!id) return fail('缺少物资ID')
-  const res = await db.collection('materials').doc(id).get()
-  return success(res.data)
+  try {
+    const res = await db.collection('materials').doc(id).get()
+    return success(res.data)
+  } catch (e) {
+    if (isMissingCollectionError(e)) {
+      await ensureMaterialsCollection()
+      return fail('物资档案尚未初始化，请先新增气球')
+    }
+    throw e
+  }
 }
 
 // 创建物资
@@ -73,8 +102,17 @@ async function createMaterial(data) {
     updatedAt: db.serverDate()
   }
 
-  const res = await db.collection('materials').add({ data: material })
-  return success({ _id: res._id, ...material })
+  try {
+    const res = await db.collection('materials').add({ data: material })
+    return success({ _id: res._id, ...material })
+  } catch (e) {
+    if (isMissingCollectionError(e)) {
+      await ensureMaterialsCollection()
+      const res = await db.collection('materials').add({ data: material })
+      return success({ _id: res._id, ...material })
+    }
+    throw e
+  }
 }
 
 // 更新物资
